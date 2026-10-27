@@ -1,0 +1,18 @@
+{
+  "techs": [
+    "Christian",
+    "Luis",
+    "Other"
+  ],
+  "stages": [
+    "Waiting / Not started",
+    "Teardown",
+    "Parts ordered",
+    "Body",
+    "Paint",
+    "Reassembly",
+    "Detail",
+    "Ready for delivery"
+  ],
+  "jobs": {}
+}

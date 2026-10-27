@@ -1,0 +1,78 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Shop Board</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#1c2230;--mut:#667085;--line:#e3e6ec;--acc:#1d5fd1;--red:#c62828;--amb:#b26a00;--grn:#1b7f3b}
+@media(prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b2029;--ink:#e8ebf2;--mut:#98a1b3;--line:#2b3240;--acc:#6aa2ff;--red:#ff6b6b;--amb:#ffb454;--grn:#5fd38a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:2}
+h1{font-size:20px;margin:0}.sub{color:var(--mut);font-size:13px}
+#logo{height:48px;max-width:70vw;object-fit:contain;display:block;margin-bottom:4px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--acc)}main{padding:16px 20px;display:grid;gap:18px}
+.grp{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.grp h2{margin:0;padding:10px 16px;font-size:17px;display:flex;justify-content:space-between;border-bottom:1px solid var(--line)}
+.grp h2 span{color:var(--mut);font-weight:400;font-size:14px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:600}tr:last-child td{border-bottom:0}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:100%}
+input.ro{width:110px}td.veh{font-weight:600}td.veh small{display:block;color:var(--mut);font-weight:400}
+.due-late input{border-color:var(--red);color:var(--red)}.due-today input{border-color:var(--amb);color:var(--amb)}
+.empty{padding:40px;text-align:center;color:var(--mut)}.err{color:var(--red);padding:8px 20px}
+@media(max-width:760px){
+ header{padding:12px 14px}main{padding:12px 14px;gap:14px}h1{font-size:18px}#logo{height:38px}
+ table,tbody{display:block}thead{display:none}
+ tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding:14px;border-bottom:1px solid var(--line)}
+ tr:last-child{border-bottom:0}
+ td{display:block;padding:0;border:0}
+ td[data-label]::before{content:attr(data-label);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:3px}
+ td.veh{grid-column:1/-1;order:-1;font-size:18px}td.veh::before{display:none}
+ td:last-child{grid-column:1/-1}
+ input,select,button{width:100%;min-height:44px;font-size:16px}
+ input.ro{width:100%}
+}
+</style></head><body>
+<header><div>
+<!-- LOGO: put your image in the "assets" folder named logo.png. If it is missing, the text title shows instead. -->
+<img id="logo" src="/assets/logo.png" alt="" onload="document.getElementById('title').style.display='none'" onerror="this.remove()">
+<h1 id="title">Shop Board</h1>
+<div class="sub" id="sub"></div></div>
+</header>
+<div class="err" id="err"></div><main id="main"></main>
+<script>
+let last="", data=null;
+const $=(t,a={},...k)=>{const e=document.createElement(t);for(const[x,v]of Object.entries(a)){if(x==='class')e.className=v;else if(x.startsWith('on'))e[x]=v;else e.setAttribute(x,v)}for(const c of k)e.append(c);return e};
+async function api(path,body){const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined);if(!r.ok)throw new Error(await r.text());return r.json()}
+function sel(opts,val,onchange,blank){const s=$('select',{onchange:e=>onchange(e.target.value)});if(blank!==undefined)s.append($('option',{value:''},blank));
+ for(const o of opts)s.append($('option',{value:o},o));if(val&&!opts.includes(val))s.append($('option',{value:val},val));s.value=val||'';return s}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+async function upd(id,field,value){try{await api('/api/update',{id,field,value});await load(true)}catch(e){err(e)}}
+function err(e){document.getElementById('err').textContent=e?('Error: '+(e.message||e)):''}
+function render(){
+ const m=document.getElementById('main');m.replaceChildren();
+ document.getElementById('sub').textContent=data.jobs.length+' vehicle'+(data.jobs.length==1?'':'s');
+ if(!data.jobs.length){m.append($('div',{class:'empty'},'No vehicles yet. Export an estimate from CCC ONE into the watched folder and it will appear here.'));return}
+ const names=[...new Set([...data.techs,...data.jobs.map(j=>j.tech).filter(Boolean)])].sort((a,b)=>a.localeCompare(b));
+ const groups=[['',"Unassigned"],...names.map(n=>[n,n])];
+ for(const[key,label]of groups){
+  const rows=data.jobs.filter(j=>j.tech===key).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+  if(!rows.length&&!key)continue;
+  const tb=$('tbody');
+  for(const j of rows){
+   const cls=j.due&&j.due<today()?'due-late':(j.due===today()?'due-today':'');
+   const ro=$('input',{class:'ro',value:j.ro,placeholder:'RO #'});ro.onchange=()=>upd(j.id,'ro',ro.value.trim());
+   const due=$('input',{type:'date',value:j.due});due.onchange=()=>upd(j.id,'due',due.value);
+   const del=$('button',{onclick:async()=>{if(!confirm('Mark '+j.vehicle+' as delivered?\n\nThis removes it from the board and DELETES its EMS files from the watched folder.'))return;
+      try{const r=await api('/api/deliver',{id:j.id});if(r.failed&&r.failed.length)alert('Some files could not be deleted:\n'+r.failed.join('\n'));await load(true)}catch(e){err(e)}}},'Delivered');
+   tb.append($('tr',{},$('td',{'data-label':'RO #'},ro),$('td',{class:'veh'},j.vehicle,j.plate?$('small',{},'Last 3 of Plate: '+j.plate):''),
+     $('td',{'data-label':'Production stage'},sel(data.stages,j.stage,v=>upd(j.id,'stage',v))),
+     $('td',{'data-label':'Tech'},sel(names,j.tech,v=>upd(j.id,'tech',v),'Unassigned')),
+     $('td',{class:cls,'data-label':'Delivery date'},due),$('td',{},del)));
+  }
+  m.append($('section',{class:'grp'},$('h2',{},label,$('span',{},rows.length+' vehicle'+(rows.length==1?'':'s'))),
+   rows.length?$('table',{},$('thead',{},$('tr',{},...['RO #','Vehicle','Production stage','Tech','Delivery date',''].map(h=>$('th',{},h)))),tb):$('div',{class:'empty'},'Nothing assigned')));
+ }}
+async function load(force){try{const d=await api('/api/board');const s=JSON.stringify(d);err('');
+ const busy=document.activeElement&&['INPUT','SELECT'].includes(document.activeElement.tagName);
+ if(s!==last&&(force||!busy)){last=s;data=d;render()}}catch(e){err(e)}}
+load(true);setInterval(()=>load(false),3000);
+</script></body></html>

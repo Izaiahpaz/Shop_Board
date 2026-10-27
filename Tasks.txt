@@ -1,0 +1,22 @@
+Requirements
+- CCCOne machine settings EMS Export and Export on Save
+
+Shop Whiteboard/
+│
+├── app.py              # Main webserver (Flask or FastAPI)
+├── parser.py           # Reads and parses EMS files
+├── watcher.py          # Monitors folder for new exports
+├── cleanup.py          # Deletes delivered jobs
+├── templates/
+│   └── index.html      # Dashboard table view
+├── static/
+│   └── style.css       # Optional styling
+└── config.py           # Folder paths and settings
+
+shop_board.py	The launcher that starts everything. Run this one.
+config.py	Your settings: the stage list, the make-code names and the port.
+dbf.py	Reads CCC’s database-style files.
+ems_parser.py	Turns one export into a board row: year/make/model, plate and delivery date.
+board.py	Watches the folder, saves RO, tech and stage, and handles Delivered and file deletion.
+webserver.py	Serves the page to your browser or TV.
+index.html	The page layout and look.
